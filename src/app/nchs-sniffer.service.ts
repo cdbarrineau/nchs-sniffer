@@ -261,12 +261,14 @@ export class NchsSnifferService {
     const envelope = JSON.parse(message.payloadString) as Envelope;
 
     // If not the global device ID, add a topic subscription.
-    if (message.destinationName  !== NchsSnifferService.BROADCAST_DEVICE_QUEUE_NAME && message.destinationName !== NchsSnifferService.DEVICE_STATE_QUEUE_NAME) {
+    if (message.destinationName  !== NchsSnifferService.BROADCAST_DEVICE_QUEUE_NAME) {
       const topic = NchsSnifferService.DEVICE_QUEUE_BASE_NAME + envelope.device_id;
 
       if (!this.topics.has(topic)) {
         this.topics.add(topic);
         this.onNewTopic.next(topic);
+
+        this.client.subscribe(topic);
       }
     }
 
