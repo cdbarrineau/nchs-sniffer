@@ -1,5 +1,4 @@
-/* You can add global styles to this file, and also import other style files   src/assets/images/bgy.png  */
-// @import '../../../node_modules/material-design-icons/iconfont/material-icons.css';
+/* You can add global styles to this file, and also import other style files.  */
 
 html,
 body {
@@ -9,7 +8,7 @@ body {
   margin: 0;
   font-family: Roboto, "Helvetica Neue", sans-serif;
   background-color: #000000;
-  background-image: url("./assets/images/bgy.png");
+  // background-image: url("./assets/images/bgy.png");
 }
 
 @font-face {
@@ -45,11 +44,6 @@ body {
   font-feature-settings: "liga";
 }
 
-html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
-
-
-
 .green-snackbar {
   color: green !important;
   background-color: aliceblue !important;
@@ -62,7 +56,8 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   --secondary-color: #6c757d;
   --white-color: #fff;
   --success-color: #198754;
-  --delete-color: #dc3545;
+  --delete-color: #dc3545;  
+  --background-color: black
   --background-color: #f2f2f2;
 }
 
@@ -70,3 +65,4 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   --mdc-snackbar-container-color: var(--success-color);
   text-align: center;
 }
+
