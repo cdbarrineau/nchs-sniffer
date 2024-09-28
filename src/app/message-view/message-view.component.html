@@ -1,5 +1,5 @@
 <div class="container">
-  <as-split direction="vertical">
+  <as-split direction="vertical" gutterSize="7">
     <as-split-area [size]="50">
       <message-table [topic]="topic" (selectedMessageChanged)="selectedMessageChanged($event)" (messagesChanged)="messagesChanged.emit($event)"></message-table>
     </as-split-area>
