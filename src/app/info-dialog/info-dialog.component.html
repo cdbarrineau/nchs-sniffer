@@ -1,0 +1,9 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+<mat-dialog-content>
+	<p>{{ message }}</p>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+	<button *ngIf="!isConfirmation" mat-raised-button color="primary" (click)="ok()">OK</button>
+	<button *ngIf="isConfirmation" mat-raised-button color="primary" (click)="yes()">Yes</button>
+	<button *ngIf="isConfirmation" mat-raised-button color="primary" (click)="no()">No</button>
+</mat-dialog-actions>

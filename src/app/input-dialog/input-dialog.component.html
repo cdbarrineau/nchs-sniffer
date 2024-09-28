@@ -1,0 +1,13 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+<mat-dialog-content>
+	<div class="container">
+		<p>{{ message }}</p>
+		<mat-form-field appearance="fill">
+			<input matInput [(ngModel)]="inputText" (keypress)="keyPressed($event)" />
+		</mat-form-field>
+	</div>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+	<button mat-raised-button color="primary" (click)="ok()">OK</button>
+	<button *ngIf="showCancelButton" mat-raised-button color="primary" (click)="cancel()">Cancel</button>
+</mat-dialog-actions>

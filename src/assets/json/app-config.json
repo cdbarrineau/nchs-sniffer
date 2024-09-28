@@ -1,0 +1,11 @@
+{
+  "version": "v1.0",
+  "serverAddress": "http://localhost",
+  "serverPort": 9000,
+  "maxMessages": 5,
+
+
+  "rabbitPassword": "w18Eggk4JbA8h3a8++yJrA==",
+  "rabbitUserName": "kdas",
+  "mqttVersion": 4
+}
