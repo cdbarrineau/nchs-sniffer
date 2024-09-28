@@ -4,7 +4,7 @@
       <message-table [topic]="topic" (selectedMessageChanged)="selectedMessageChanged($event)" (messagesChanged)="messagesChanged.emit($event)"></message-table>
     </as-split-area>
     <as-split-area [size]="50">
-      <message-details [message]="selectedMessage"></message-details>
+      <message-details [topic]="topic" [message]="selectedMessage"></message-details>
     </as-split-area>
   </as-split>
 </div>

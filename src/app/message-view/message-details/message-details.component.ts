@@ -17,6 +17,10 @@ export class MessageDetailsComponent implements OnChanges {
   @Input()
   public message: NchsViewMessage;
 
+  /** The topic to display messages for. */
+  @Input()
+  public topic: string;
+
   /** The message text. */
   public messageText = '';
 
@@ -30,6 +34,9 @@ export class MessageDetailsComponent implements OnChanges {
     if (changes['message'] && this.message) {
       const deviceMessage = MessageConverter.convert(this.message.message);
       this.messageText = JSON.stringify(deviceMessage, null, 2);
+    }
+    else if (changes['topic'] && !this.topic) {
+      this.clear();
     }
     else {
       this.clear();
