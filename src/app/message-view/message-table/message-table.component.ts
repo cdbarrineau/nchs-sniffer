@@ -28,6 +28,10 @@ export class MessageTableComponent implements OnInit, AfterViewInit, OnChanges, 
   @Input()
   public topic: string;
 
+  /** True for playing events, false for paused. */
+  @Input()
+  public playingEvents = true;
+
   /** Fired when the selected message in the table changes. */
   @Output()
   public selectedMessageChanged = new EventEmitter<NchsViewMessage>();
@@ -44,9 +48,6 @@ export class MessageTableComponent implements OnInit, AfterViewInit, OnChanges, 
 
   /** The name of the KDAS device columns that are displayed. */
   public displayedColumns = ['messageType', 'timestamp', 'deviceId', 'deviceIdAsMac'];
-
-  /** True for playing events, false for paused. */
-  public playingEvents = true;
 
   /** Used to unsibscribe from message events. */
   private messageSubscription: Subscription;
@@ -99,6 +100,11 @@ export class MessageTableComponent implements OnInit, AfterViewInit, OnChanges, 
   public ngOnChanges(changes: SimpleChanges): void {
     if (changes['topic'] && this.topic) {
       this.loadMessages();
+    }
+    else if (changes['playingEvents']) {
+      if (this.playingEvents) {
+        this.loadMessages();
+      }
     }
   }
 
@@ -159,24 +165,6 @@ export class MessageTableComponent implements OnInit, AfterViewInit, OnChanges, 
     this.selectedMessageChanged.next(null);
 
     this.messagesChanged.emit(false);
-  }
-
-  /**
-   * Plays events being added to the table.
-   * 
-   */
-  public play() {
-    this.playingEvents = true;
-
-    this.loadMessages();
-  }
-
-  /**
-   * Pauses events being added to the table.
-   * 
-   */
-  public pause() {
-    this.playingEvents = false;
   }
 
   /**

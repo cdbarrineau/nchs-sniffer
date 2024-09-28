@@ -145,7 +145,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   public play() {
     this.playingEvents = true;
 
-    this.messageViewComponent.play();
+    // this.messageViewComponent.play();
   }
 
   /**
@@ -155,7 +155,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   public pause() {
     this.playingEvents = false;
 
-    this.messageViewComponent.pause();
+    // this.messageViewComponent.pause();
   }
 
   /**

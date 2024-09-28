@@ -22,6 +22,10 @@ export class MessageViewComponent {
   @Input()
   public topic: string;
 
+  /** True for playing events, false for paused. */
+  @Input()
+  public playingEvents = true;
+
   /** Fired when messages have been added or removed from the table. */
   @Output()
   public messagesChanged = new EventEmitter<boolean>();
@@ -60,21 +64,5 @@ export class MessageViewComponent {
    */
   public hasEvents() {
     return this.messageTableComponent.hasEvents();
-  }
-
-  /**
-   * Plays events being added to the table.
-   * 
-   */
-  public play() {
-    this.messageTableComponent.play();
-  }
-
-  /**
-   * Pauses events being added to the table.
-   * 
-   */
-  public pause() {
-    this.messageTableComponent.pause();
   }
 }

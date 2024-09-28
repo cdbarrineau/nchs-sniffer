@@ -21,7 +21,7 @@
       </div>
     </as-split-area>
     <as-split-area [size]="70">
-      <message-view [topic]="selectedTopic" (messagesChanged)="tableMessagesChanged($event)"></message-view>
+      <message-view [topic]="selectedTopic" [playingEvents]="playingEvents" (messagesChanged)="tableMessagesChanged($event)"></message-view>
     </as-split-area>
   </as-split>
 </div>
