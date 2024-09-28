@@ -6,12 +6,6 @@ export class AppConfig {
 	/** The version of the application. */
 	public version: string;
 
-	/** Hostname or IP of where the KDAS server is running. */
-	public serverAddress: string;
-
-	/** The port of the KDAS server. */
-	public serverPort: number;
-
 	/** The encrypted password to RabbitMQ. */
 	public rabbitPassword: string;
 
