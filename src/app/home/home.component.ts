@@ -41,6 +41,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   /** True for playing events, false for paused. */
   public playingEvents = true;
 
+  /** when set to true, will show a delete next to each topic. */
+  public showTopicDelete = false;
+
   /** Reference to the splash screen dialog. */
 	private connectionDialogRef: MatDialogRef<ConnectionDialogComponent, any> | null;
 
@@ -114,6 +117,28 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Deletes the selected topic.
+   * 
+   * @param event The mouse event.
+   * @param topic the topic to delete.
+   */
+  public deleteTopic(event: MouseEvent, topic: string) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (this.selectedTopic === topic) {
+      this.selectedTopic = null;
+    }
+
+    const index = this.topics.indexOf(topic);
+    if (index >= 0) {
+      this.topics.splice(index, 1);
+    }
+
+    this.nchsSnifferService.deleteTopic(topic);
+  }
+
+  /**
    * Clears all data in the table for the selected topic.
    * 
    */
@@ -144,8 +169,6 @@ export class HomeComponent implements OnInit, OnDestroy {
    */
   public play() {
     this.playingEvents = true;
-
-    // this.messageViewComponent.play();
   }
 
   /**
@@ -154,8 +177,6 @@ export class HomeComponent implements OnInit, OnDestroy {
    */
   public pause() {
     this.playingEvents = false;
-
-    // this.messageViewComponent.pause();
   }
 
   /**

@@ -98,8 +98,13 @@ export class MessageTableComponent implements OnInit, AfterViewInit, OnChanges, 
    * @param changes The changes.
    */
   public ngOnChanges(changes: SimpleChanges): void {
-    if (changes['topic'] && this.topic) {
-      this.loadMessages();
+    if (changes['topic']) {
+      if (this.topic) {
+        this.loadMessages();
+      }
+      else {
+        this.clear();
+      }
     }
     else if (changes['playingEvents']) {
       if (this.playingEvents) {

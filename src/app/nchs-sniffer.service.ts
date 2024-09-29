@@ -43,16 +43,19 @@ export class NchsSnifferService {
   private static readonly UNIQUE_NAME = 'NCHS Sniffer ' + UUIDFactory.newUUID();
 
   /** Name of the Message Broker queue to publish broadcast device message on. */
-  private static readonly BROADCAST_DEVICE_QUEUE_NAME = "queue/nchs-control-system-broadcast";
+  private static readonly BROADCAST_DEVICE_QUEUE_NAME = 'queue/nchs-control-system-broadcast';
 
   /** Name of the queue to get all device state. */
-  private static readonly DEVICE_STATE_QUEUE_NAME = "queue/nchs-device-broadcast";
+  private static readonly DEVICE_STATE_QUEUE_NAME = 'queue/nchs-device-broadcast';
 
   /**
    * The base name of the device-specific queue used to publish messages directly to the device. This will be used as
    * the base to append the device's ID onto to create queueName.
    */
-  private static readonly DEVICE_QUEUE_BASE_NAME = "queue/nchs-device-";
+  private static readonly DEVICE_QUEUE_BASE_NAME = 'queue/nchs-device-';
+
+  /** Key in local storage to read and write topics. */
+  private static readonly TOPICS_LOCAL_STORAGE_KEY = 'topics';
 
   /** IP address of where the message broker is running. */
   private ipAddress: string;
@@ -83,6 +86,10 @@ export class NchsSnifferService {
   constructor() {
     this.topics.add(NchsSnifferService.BROADCAST_DEVICE_QUEUE_NAME);
     this.topics.add(NchsSnifferService.DEVICE_STATE_QUEUE_NAME);
+
+    this.readFromLocalStorage();
+
+    window.addEventListener('unload', () => this.saveToLocalStorage());
   }
 
   /**
@@ -108,6 +115,17 @@ export class NchsSnifferService {
     const messages = this.messages.get(topic);
     if (messages) {
       messages.length = 0;
+    }
+  }
+
+  /**
+   * Deleted a topic.
+   * 
+   * @param topic The topic to delete.
+   */
+  public deleteTopic(topic: string) {
+    if (this.topics.delete(topic)) {
+      this.saveToLocalStorage();
     }
   }
 
@@ -266,6 +284,9 @@ export class NchsSnifferService {
 
       if (!this.topics.has(topic)) {
         this.topics.add(topic);
+
+        this.saveToLocalStorage();
+
         this.onNewTopic.next(topic);
 
         this.client.subscribe(topic);
@@ -309,6 +330,33 @@ export class NchsSnifferService {
     if (this.intervalRef) {
       window.clearInterval(this.intervalRef);
       this.intervalRef = 0;
+    }
+  }
+
+  /**
+   * Saves all data to local storage.
+   * 
+   */
+  private saveToLocalStorage() {
+    const topics: string[] = [];
+    for (const topic of this.topics) {
+      topics.push(topic);
+    }
+
+    localStorage.setItem(NchsSnifferService.TOPICS_LOCAL_STORAGE_KEY, JSON.stringify(topics));
+  }
+
+  /**
+   * Loads all data from local storage.
+   * 
+   */
+  private readFromLocalStorage() {
+    const topicsJson = localStorage.getItem(NchsSnifferService.TOPICS_LOCAL_STORAGE_KEY);
+    if (topicsJson) {
+      const topics = JSON.parse(topicsJson) as string[];
+      for (const topic of topics) {
+        this.topics.add(topic);
+      }
     }
   }
 }
