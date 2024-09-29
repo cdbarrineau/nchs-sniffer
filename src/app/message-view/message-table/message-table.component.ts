@@ -188,6 +188,11 @@ export class MessageTableComponent implements OnInit, AfterViewInit, OnChanges, 
 
       this.messagesChanged.emit(true);
     }
+    else {
+      this.dataSource.data = [];
+
+      this.messagesChanged.emit(false);
+    }
   }
 
   /**
