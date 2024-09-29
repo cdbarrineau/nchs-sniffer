@@ -119,6 +119,17 @@ export class NchsSnifferService {
   }
 
   /**
+   * Deleted a topic.
+   * 
+   * @param topic The topic to delete.
+   */
+  public deleteTopic(topic: string) {
+    if (this.topics.delete(topic)) {
+      this.saveToLocalStorage();
+    }
+  }
+
+  /**
    * Connects to the message broker.
    * 
    * @param ipAddress The address to connect to the message broker.

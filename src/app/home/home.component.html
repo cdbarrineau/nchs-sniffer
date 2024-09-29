@@ -1,10 +1,10 @@
 <mat-toolbar>
   <span>NCHS Message Sniffer {{ version }}</span>
   <span class="toolbar-spacer"></span>
-  <button *ngIf="!playingEvents" class="play-buttons" mat-icon-button (click)="play()" matTooltip="Resume Events">
+  <button *ngIf="!playingEvents" mat-icon-button (click)="play()" matTooltip="Resume Events">
     <mat-icon>play_arrow</mat-icon>
   </button>
-  <button *ngIf="playingEvents" class="play-buttons"mat-icon-button (click)="pause()" matTooltip="Pause Events">
+  <button *ngIf="playingEvents" mat-icon-button (click)="pause()" matTooltip="Pause Events">
     <mat-icon>pause</mat-icon>
   </button>
   <button [disabled]="toolbarButtonsDisabled" mat-icon-button (click)="clearTableData()" matTooltip="Clear events in the Table">
@@ -15,8 +15,19 @@
   <as-split direction="horizontal" gutterSize="7">
     <as-split-area [size]="30">
       <div class="topics">
+        <button *ngIf="!showTopicDelete" class="delete-topic-button" mat-fab-button matTooltip="Delete Topics" (click)="showTopicDelete = !showTopicDelete">
+          <mat-icon>delete</mat-icon>
+        </button>
+        <button *ngIf="showTopicDelete" class="delete-topic-button" mat-fab-button matTooltip="Done Delete Topics" (click)="showTopicDelete = !showTopicDelete">
+          <mat-icon>check_box</mat-icon>
+        </button>
         <mat-selection-list [multiple]="false" (selectionChange)="selectedTopicChanged($event)">
-          <mat-list-option *ngFor="let topic of topics" [value]="topic">{{ topic }}</mat-list-option>
+          <ng-container *ngFor="let topic of topics">
+            <mat-list-option [value]="topic">
+              <mat-icon *ngIf="showTopicDelete" class="topic-delete" (click)="deleteTopic($event, topic)">close</mat-icon>
+              {{ topic }}
+            </mat-list-option>
+          </ng-container>
         </mat-selection-list>
       </div>
     </as-split-area>
