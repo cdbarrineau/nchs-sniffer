@@ -11,6 +11,7 @@ import { DeviceIdFormatter } from './util/device-id-formatter';
 import { DiagnosticRequest } from './messages/diagnostic/diagnostic-request';
 import { DiagnosticMessageType } from './messages/diagnostic/diagnostic-message-type';
 import { DiagnosticResponse } from './messages/diagnostic/diagnostic-response';
+import { MessageType } from './messages/icd/message-type';
 
 /**
  * Used to interface with the message broker.
@@ -290,18 +291,101 @@ export class NchsSnifferService {
       for (const envelopeText of messages) {
         const envelope = JSON.parse(envelopeText) as Envelope;
         if (envelope.msg_type) {
-          this.handleEnvelope(envelope, response.queueName);
+          if (!this.isDuplicate(response.queueName, envelope)) {
+            this.handleEnvelope(envelope, response.queueName);
+          }
         }
         else {
           console.info('Got unknown message payload (not an Envelope)', message);
         }
       }
-
-      // console.info('Messages:', messages);
     }
     else {
       console.warn('Unknown diagnostic message recevied: ', message);
     }
+  }
+
+  /**
+   * Checks for any duplicate messages.  This may be the case when we
+   * recevied a message in rea-time and we also requested messages.  This
+   * could also be the case of when the user clicks on a topic more than once.
+   * 
+   * @param envelope The envelope to check for any duplicates.
+   * @returns Returns true if the envelope is already in the cache for the topic.
+   */
+  private isDuplicate(topic: string, envelope: Envelope): boolean {
+    const messages = this.messages.get(topic);
+    if (!messages) {
+      return false;
+    }
+    if (messages.length === 0) {
+      return false;
+    }
+
+    const index = messages.findIndex(m => m.envelope.device_id === envelope.device_id && m.envelope.seq_num === envelope.seq_num);
+
+    return index >= 0;
+  }
+
+  /**
+   * Handles a MQTT message from a non-diagnostic queue.
+   * 
+   * @param message the message to handle.
+   */
+  private handleMqttMessage(message: Mqtt.Message) {
+
+    this.addTopic(message.destinationName);
+
+    // Now for the payload.  Should be an envelope.
+    const envelope = JSON.parse(message.payloadString) as Envelope;
+    if (envelope.msg_type !== null && envelope.msg_type !== undefined) {
+      this.handleEnvelope(envelope, message.destinationName);
+    }
+    else {
+      this.handleUnknownMessage(message);
+    }
+  }
+
+  /**
+   * Handles a new envelope of data.
+   * 
+   * @param envelope The envelope of data to handle.
+   * @param destinationName The destination name the message came in on.
+   */
+  private handleEnvelope(envelope: Envelope, destinationName: string) {
+    const topicMessages = this.getTopicMessages(destinationName);
+
+    const nchsMessage = new NchsMessage();
+    nchsMessage.deviceIdAsMac = DeviceIdFormatter.formatDeviceId(envelope.device_id);
+    nchsMessage.envelope = envelope;
+    nchsMessage.id = ++this.currentMessageId;
+    nchsMessage.topic = destinationName;
+
+    topicMessages.push(nchsMessage);
+
+    this.onMessage.next(nchsMessage);
+  }
+
+  /**
+   * Attempts to handle an unknown message from a queue.
+   * 
+   * @param message The message to handle.
+   */
+  private handleUnknownMessage(message: Mqtt.Message) {
+    const topicMessages = this.getTopicMessages(message.destinationName);
+
+    const nchsMessage = new NchsMessage();
+    nchsMessage.id = ++this.currentMessageId;
+    nchsMessage.topic = message.destinationName;
+    nchsMessage.envelope = new Envelope();
+    nchsMessage.envelope.device_id = -1;
+    nchsMessage.envelope.msg_type = MessageType.Unknown;
+    nchsMessage.envelope.timestamp = new Date().toISOString();
+    nchsMessage.envelope.payload = message.payloadString.replaceAll('\\', '');
+
+    topicMessages.push(nchsMessage);
+
+    this.onMessage.next(nchsMessage);
   }
 
   /**
@@ -319,59 +403,33 @@ export class NchsSnifferService {
   }
 
   /**
-   * Handles a MQTT message from a non-diagnostic queue.
+   * Gets the topic messages for a destination.  If one does
+   * not exist it will be created and added to messages map.
+   * This also check if the length of the messages and if it
+   * exceeds the maximum amount, will remove the first message.
    * 
-   * @param message the message to handle.
+   * @param destinationName The destination of the message.
    */
-  private handleMqttMessage(message: Mqtt.Message) {
+  private getTopicMessages(destinationName: string): NchsMessage[] {
+    let topicMessages = this.messages.get(destinationName);
+    if (topicMessages) {
+      if (topicMessages.length === this.appConfig.maxMessages) {
+        const message = topicMessages[0];
+        
+        topicMessages.splice(0, 1);
 
-    this.addTopic(message.destinationName);
-
-    // Now for the payload.  Should be an envelope.
-    const envelope = JSON.parse(message.payloadString) as Envelope;
-    if (envelope.msg_type) {
-      this.handleEnvelope(envelope, message.destinationName);
+        this.messageDeleted.next(message);
+      }
     }
     else {
-      console.info('Got unknown message payload (not an Envelope)', message);
+      topicMessages = [];
+
+      this.messages.set(destinationName, topicMessages);
     }
+
+    return topicMessages;
   }
 
-  /**
-   * Handles a new envelope of data.
-   * 
-   * @param envelope The envelope of data to handle.
-   * @param destinationName The destination name the message came in on.
-   */
-  private handleEnvelope(envelope: Envelope, destinationName: string) {
-    let topicMessages = this.messages.get(destinationName);
-      if (topicMessages) {
-        if (topicMessages.length === this.appConfig.maxMessages) {
-          const message = topicMessages[0];
-          
-          topicMessages.splice(0, 1);
-
-          this.messageDeleted.next(message);
-        }
-      }
-      else {
-        topicMessages = [];
-
-        this.messages.set(destinationName, topicMessages);
-      }
-
-      const nchsMessage = new NchsMessage();
-      nchsMessage.deviceIdAsMac = DeviceIdFormatter.formatDeviceId(envelope.device_id);
-      nchsMessage.envelope = envelope;
-      nchsMessage.id = ++this.currentMessageId;
-      nchsMessage.topic = destinationName;
-
-      topicMessages.push(nchsMessage);
-
-      console.debug('Got new envelope message:', nchsMessage);
-
-      this.onMessage.next(nchsMessage);
-  }
 
   /**
    * Clears the reconnect interval if it's running.
