@@ -290,7 +290,7 @@ export class NchsSnifferService {
 
       for (const envelopeText of messages) {
         const envelope = JSON.parse(envelopeText) as Envelope;
-        if (envelope.msg_type) {
+        if (envelope.msg_type !== undefined && envelope.msg_type !== null) {
           if (!this.isDuplicate(response.queueName, envelope)) {
             this.handleEnvelope(envelope, response.queueName);
           }
