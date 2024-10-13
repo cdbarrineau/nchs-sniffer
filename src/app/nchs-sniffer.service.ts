@@ -8,6 +8,9 @@ import { AppConfig } from './util/app-config';
 import { Decrypt } from './util/decrypt';
 import { Envelope } from './messages/icd/envelope';
 import { DeviceIdFormatter } from './util/device-id-formatter';
+import { DiagnosticRequest } from './messages/diagnostic/diagnostic-request';
+import { DiagnosticMessageType } from './messages/diagnostic/diagnostic-message-type';
+import { DiagnosticResponse } from './messages/diagnostic/diagnostic-response';
 
 /**
  * Used to interface with the message broker.
@@ -42,20 +45,11 @@ export class NchsSnifferService {
   /** Unique name for this broker. */
   private static readonly UNIQUE_NAME = 'NCHS Sniffer ' + UUIDFactory.newUUID();
 
-  /** Name of the Message Broker queue to publish broadcast device message on. */
-  private static readonly BROADCAST_DEVICE_QUEUE_NAME = 'queue/nchs-control-system-broadcast';
+  /** Name of the queue to subscribe for diagnostic messages. */
+  private static readonly PUBLISH_QUEUE_NANE = 'queue/nchs-diagnostic-request';
 
-  /** Name of the queue to get all device state. */
-  private static readonly DEVICE_STATE_QUEUE_NAME = 'queue/nchs-device-broadcast';
-
-  /**
-   * The base name of the device-specific queue used to publish messages directly to the device. This will be used as
-   * the base to append the device's ID onto to create queueName.
-   */
-  private static readonly DEVICE_QUEUE_BASE_NAME = 'queue/nchs-device-';
-
-  /** Key in local storage to read and write topics. */
-  private static readonly TOPICS_LOCAL_STORAGE_KEY = 'topics';
+  /** Name of the queue to publish diagnostic messages. */
+  private static readonly SUBSCRIBE_QUEUE_NAME = 'queue/nchs-diagnostic-response';
 
   /** IP address of where the message broker is running. */
   private ipAddress: string;
@@ -84,12 +78,6 @@ export class NchsSnifferService {
    * 
    */
   constructor() {
-    this.topics.add(NchsSnifferService.BROADCAST_DEVICE_QUEUE_NAME);
-    this.topics.add(NchsSnifferService.DEVICE_STATE_QUEUE_NAME);
-
-    this.readFromLocalStorage();
-
-    window.addEventListener('unload', () => this.saveToLocalStorage());
   }
 
   /**
@@ -99,6 +87,9 @@ export class NchsSnifferService {
    * @returns Returns the messages or falsy if there are no messages.
    */
   public getMessages(topic: string): NchsMessage[] {
+
+    this.requestMessagesFromQueue(topic);
+
     return this.messages.get(topic);
   }
 
@@ -124,9 +115,7 @@ export class NchsSnifferService {
    * @param topic The topic to delete.
    */
   public deleteTopic(topic: string) {
-    if (this.topics.delete(topic)) {
-      this.saveToLocalStorage();
-    }
+    this.topics.delete(topic)
   }
 
   /**
@@ -214,24 +203,14 @@ export class NchsSnifferService {
     console.debug('Connected to message broker at ' + this.ipAddress + ' as ' + NchsSnifferService.UNIQUE_NAME);
 
     if (this.client) {
-      this.subscibe();
+      this.client.subscribe('#');
     }
 
     this.clearInterval();
 
-    this.onConnected.next();
-  }
+    this.requestRegisteredQueues();
 
-  /**
-   * Subscribe to all initial topics.
-   * 
-   */
-  private subscibe() {
-    if (this.client) {
-      for (const topic of this.topics) {
-        this.client.subscribe(topic);
-      }
-    }
+    this.onConnected.next();
   }
 
   /**
@@ -276,50 +255,122 @@ export class NchsSnifferService {
    * @param message The message to handle
    */
   private handleMessage(message: Mqtt.Message) {
-    const envelope = JSON.parse(message.payloadString) as Envelope;
 
-    // If not the global device ID, add a topic subscription.
-    if (message.destinationName  !== NchsSnifferService.BROADCAST_DEVICE_QUEUE_NAME) {
-      const topic = NchsSnifferService.DEVICE_QUEUE_BASE_NAME + envelope.device_id;
-
-      if (!this.topics.has(topic)) {
-        this.topics.add(topic);
-
-        this.saveToLocalStorage();
-
-        this.onNewTopic.next(topic);
-
-        this.client.subscribe(topic);
-      }
+    // Since we subscribe for everything, make sure we didn't get our own message.
+    if (message.destinationName === NchsSnifferService.PUBLISH_QUEUE_NANE) {
+      return;
     }
 
-    let topicMessages = this.messages.get(message.destinationName);
-    if (topicMessages) {
-      if (topicMessages.length === this.appConfig.maxMessages) {
-        const message = topicMessages[0];
-        
-        topicMessages.splice(0, 1);
+    console.debug('Got message', message);
 
-        this.messageDeleted.next(message);
-      }
+    if (message.destinationName === NchsSnifferService.SUBSCRIBE_QUEUE_NAME) {
+      this.handleDiagnosticResponse(message);
     }
     else {
-      topicMessages = [];
-
-      this.messages.set(message.destinationName, topicMessages);
+      this.handleMqttMessage(message);
     }
+  }
 
-    const nchsMessage = new NchsMessage();
-    nchsMessage.deviceIdAsMac = DeviceIdFormatter.formatDeviceId(envelope.device_id);
-    nchsMessage.envelope = envelope;
-    nchsMessage.id = ++this.currentMessageId;
-    nchsMessage.topic = message.destinationName;
+  /**
+   * Handles a diagnostic response message.
+   * 
+   * @param message The message to handle.
+   */
+  private handleDiagnosticResponse(message: Mqtt.Message) {
+    const response = JSON.parse(message.payloadString) as DiagnosticResponse;
+    if (response.diagnosticMessageType === DiagnosticMessageType.QUEUES) {
+      const topics = JSON.parse(response.payload) as string[];
+      for (const topic of topics) {
+        this.addTopic(topic);
+      }
+    }
+    else if (response.diagnosticMessageType === DiagnosticMessageType.MESSAGES) {
+      const messages = JSON.parse(response.payload) as string[];
 
-    topicMessages.push(nchsMessage);
+      for (const envelopeText of messages) {
+        const envelope = JSON.parse(envelopeText) as Envelope;
+        if (envelope.msg_type) {
+          this.handleEnvelope(envelope, response.queueName);
+        }
+        else {
+          console.info('Got unknown message payload (not an Envelope)', message);
+        }
+      }
 
-    console.debug('Got new MQTT message:', nchsMessage, message);
+      // console.info('Messages:', messages);
+    }
+    else {
+      console.warn('Unknown diagnostic message recevied: ', message);
+    }
+  }
 
-    this.onMessage.next(nchsMessage);
+  /**
+   * Adds a new topic if is does not exist already.
+   * 
+   * @param topic The topic to add.
+   */
+  private addTopic(topic: string) {
+    // See if we need to add the topic.
+    if (!this.topics.has(topic)) {
+      this.topics.add(topic);
+
+      this.onNewTopic.next(topic);
+    }
+  }
+
+  /**
+   * Handles a MQTT message from a non-diagnostic queue.
+   * 
+   * @param message the message to handle.
+   */
+  private handleMqttMessage(message: Mqtt.Message) {
+
+    this.addTopic(message.destinationName);
+
+    // Now for the payload.  Should be an envelope.
+    const envelope = JSON.parse(message.payloadString) as Envelope;
+    if (envelope.msg_type) {
+      this.handleEnvelope(envelope, message.destinationName);
+    }
+    else {
+      console.info('Got unknown message payload (not an Envelope)', message);
+    }
+  }
+
+  /**
+   * Handles a new envelope of data.
+   * 
+   * @param envelope The envelope of data to handle.
+   * @param destinationName The destination name the message came in on.
+   */
+  private handleEnvelope(envelope: Envelope, destinationName: string) {
+    let topicMessages = this.messages.get(destinationName);
+      if (topicMessages) {
+        if (topicMessages.length === this.appConfig.maxMessages) {
+          const message = topicMessages[0];
+          
+          topicMessages.splice(0, 1);
+
+          this.messageDeleted.next(message);
+        }
+      }
+      else {
+        topicMessages = [];
+
+        this.messages.set(destinationName, topicMessages);
+      }
+
+      const nchsMessage = new NchsMessage();
+      nchsMessage.deviceIdAsMac = DeviceIdFormatter.formatDeviceId(envelope.device_id);
+      nchsMessage.envelope = envelope;
+      nchsMessage.id = ++this.currentMessageId;
+      nchsMessage.topic = destinationName;
+
+      topicMessages.push(nchsMessage);
+
+      console.debug('Got new envelope message:', nchsMessage);
+
+      this.onMessage.next(nchsMessage);
   }
 
   /**
@@ -334,29 +385,26 @@ export class NchsSnifferService {
   }
 
   /**
-   * Saves all data to local storage.
+   * Sends a request to get all registered queue names.
    * 
    */
-  private saveToLocalStorage() {
-    const topics: string[] = [];
-    for (const topic of this.topics) {
-      topics.push(topic);
-    }
+  private requestRegisteredQueues() {
+    const diagnosticRequest = new DiagnosticRequest();
+    diagnosticRequest.diagnosticMessageType = DiagnosticMessageType.QUEUES;
 
-    localStorage.setItem(NchsSnifferService.TOPICS_LOCAL_STORAGE_KEY, JSON.stringify(topics));
+    this.client.send(NchsSnifferService.PUBLISH_QUEUE_NANE, JSON.stringify(diagnosticRequest));
   }
 
   /**
-   * Loads all data from local storage.
+   * Sends a request to get all messages on a specified topic's routing key (queue).
    * 
+   * @param queueName The name of the queue (topic's routing key).
    */
-  private readFromLocalStorage() {
-    const topicsJson = localStorage.getItem(NchsSnifferService.TOPICS_LOCAL_STORAGE_KEY);
-    if (topicsJson) {
-      const topics = JSON.parse(topicsJson) as string[];
-      for (const topic of topics) {
-        this.topics.add(topic);
-      }
-    }
+  private requestMessagesFromQueue(queueName: string) {
+    const diagnosticRequest = new DiagnosticRequest();
+    diagnosticRequest.diagnosticMessageType = DiagnosticMessageType.MESSAGES;
+    diagnosticRequest.queueName = queueName;
+
+    this.client.send(NchsSnifferService.PUBLISH_QUEUE_NANE, JSON.stringify(diagnosticRequest));
   }
 }
