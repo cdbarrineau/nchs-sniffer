@@ -11,7 +11,8 @@ export enum MessageType {
   AirCleanLens,
   Disconnect,
   ResetShotNumberMessage,
-  PowerOff
+  PowerOff,
+  Unknown
 }
 
 export const HitDetectionDisplayString = 'Hit Detection';
@@ -23,6 +24,7 @@ export const AirCleanLensDisplayString = 'Air Clean Lens';
 export const DisconnectDisplayString = 'Disconnected';
 export const ResetShotNumberMessageDisplayString = 'Reset Shot Number';
 export const PowerOffMessageDisplayString = 'Power Off';
+export const UnknownMessageDisplayString = 'Unknown';
 
 /**
  * Gets the string representation of a message type.
@@ -82,7 +84,6 @@ export function fromMessageTypeDisplayString(displayString: string): MessageType
     case PowerOffMessageDisplayString:
       return MessageType.PowerOff;
     default:
-      console.error('Unknown message type display string passed to fromMessageTypeDisplayString: ', displayString);
-      return null;
+      return MessageType.Unknown;
   }
 }
