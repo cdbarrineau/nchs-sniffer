@@ -185,7 +185,6 @@ export class HomeComponent implements OnInit, OnDestroy {
    * @param appConfig The application configuration data.
    */
   private initialize(appConfig: AppConfig) {
-
     for (const topic of this.nchsSnifferService.topics) {
       this.addTopic(topic);
     }
@@ -230,7 +229,37 @@ export class HomeComponent implements OnInit, OnDestroy {
     const index = this.topics.indexOf(topic);
     if (index < 0) {
       this.topics.push(topic);
+
+      this.sortTopics();
     }
+  }
+
+  /**
+   * Sorts the topics by name.
+   * 
+   */
+  private sortTopics() {
+    this.topics.sort((a, b) => {
+      if (a.startsWith('queue/nchs-device-') && a.startsWith('queue/nchs-device-')) {
+        const aDeviceId = Number(a.substring(a.lastIndexOf('-')));
+        const bDeviceId = Number(b.substring(b.lastIndexOf('-')));
+
+        if (isNaN(aDeviceId) || isNaN(bDeviceId)) {
+          return a.localeCompare(b);
+        }
+        else if (isNaN(aDeviceId)) {
+          return a.localeCompare(b);
+        }
+        else if (isNaN(bDeviceId)) {
+          return a.localeCompare(b);
+        }
+        else {
+          return bDeviceId - aDeviceId;
+        }
+      }
+
+      return a.localeCompare(b);
+    });
   }
 
   /**
