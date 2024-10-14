@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "nchs-sniffer-ui": {
+    "nchs-sniffer": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -21,7 +21,7 @@
               "sockjs-client",
               "stompjs"
             ],
-            "outputPath": "dist/nchs-sniffer-ui",
+            "outputPath": "dist/nchs-sniffer",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": [
@@ -71,10 +71,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "nchs-sniffer-ui:build:production"
+              "browserTarget": "nchs-sniffer:build:production"
             },
             "development": {
-              "browserTarget": "nchs-sniffer-ui:build:development"
+              "browserTarget": "nchs-sniffer:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -82,7 +82,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "nchs-sniffer-ui:build"
+            "browserTarget": "nchs-sniffer:build"
           }
         },
         "test": {
