@@ -361,6 +361,8 @@ export class NchsSnifferService {
     nchsMessage.id = ++this.currentMessageId;
     nchsMessage.topic = destinationName;
 
+    this.checkMessagesLength(topicMessages);
+
     topicMessages.push(nchsMessage);
 
     this.onMessage.next(nchsMessage);
@@ -382,6 +384,8 @@ export class NchsSnifferService {
     nchsMessage.envelope.msg_type = MessageType.Unknown;
     nchsMessage.envelope.timestamp = new Date().toISOString();
     nchsMessage.envelope.payload = message.payloadString.replaceAll('\\', '');
+
+    this.checkMessagesLength(topicMessages);
 
     topicMessages.push(nchsMessage);
 
@@ -412,16 +416,7 @@ export class NchsSnifferService {
    */
   private getTopicMessages(destinationName: string): NchsMessage[] {
     let topicMessages = this.messages.get(destinationName);
-    if (topicMessages) {
-      if (topicMessages.length === this.appConfig.maxMessages) {
-        const message = topicMessages[0];
-        
-        topicMessages.splice(0, 1);
-
-        this.messageDeleted.next(message);
-      }
-    }
-    else {
+    if (!topicMessages) {
       topicMessages = [];
 
       this.messages.set(destinationName, topicMessages);
@@ -430,6 +425,21 @@ export class NchsSnifferService {
     return topicMessages;
   }
 
+  /**
+   * Checkes the length of the array and will delete any that
+   * are over max messages.
+   * 
+   * @param messages The messages to check.
+   */
+  private checkMessagesLength(messages: NchsMessage[]) {
+    if (messages.length === this.appConfig.maxMessages) {
+      const message = messages[0];
+      
+      messages.splice(0, 1);
+
+      this.messageDeleted.next(message);
+    }
+  }
 
   /**
    * Clears the reconnect interval if it's running.
